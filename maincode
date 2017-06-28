@@ -1,0 +1,924 @@
+/** TODO:
+ * fix CTH UI and finish importing the story
+ * add back button
+ * eventually add Create option
+**/
+
+var path = ["title"];
+var whereUR = "load";
+var ugLoader = {
+    width:0,
+    soundcue:false,
+    randomX:0,
+    randomY:0
+};
+var fade = {
+    red: 0,
+    blue: 255
+};
+var title = {
+    oneX: 30,
+    twoX: 190,
+    oneFade: 75,
+    twoFade: 75
+};
+var choiceY;
+var terminal = false;
+var currPageId = 0;
+var startMillis = millis();
+var gndZeroX = 0;
+var numQuestions = 0;
+var doItOnce = false;
+var appBaseX;
+var appBaseY;
+var helpPage = 1;
+var tab = "new";
+var row = 1;
+var star = getImage("cute/Star");
+var orderOfApps = {
+    anew: ["cth","fire"],
+    trending: [],
+    atop: ["cth"],
+    aall: ["cth","fire"],
+    starred: []
+};
+var btnz = [
+    {
+        x: 10,
+        y: 0,
+        width: 380,
+        height: 50,
+        goToId: 0
+    },
+    {
+        x: 10,
+        y: 0,
+        width: 380,
+        height: 50,
+        goToId: 0
+    },
+    {
+        x: 10,
+        y: 0,
+        width: 380,
+        height: 50,
+        goToId: 0
+    },
+    {
+        x: 10,
+        y: 0,
+        width: 380,
+        height: 50,
+        goToId: 0
+    }
+];
+var stories = [
+    {
+        name: "fire",
+        author: "Eli",
+        date: "8/29/16",
+        note: "This is my first\nchoose your own adventure.\nHave fun!",
+        site: "https://www.khanacademy.org/profile/e17m/"
+    },
+    {
+        name: "cth",
+        author: "Eli     and Isaiah",
+        date: "9/5/16",
+        note: "",
+        site: "https://www.khanacademy.org/profile/e17m/ and https://www.khanacademy.org/profile/isaiah.mock/"
+    }
+];
+var isMouseInside = function(btn) {
+    return (mouseX >= btn.x &&
+            mouseX <= (btn.x+btn.width) &&
+            mouseY >= btn.y && 
+            mouseY <= (btn.y+btn.height));
+};
+var plusBox = function(x, y, col1, col2, col3) {
+    strokeWeight(1);
+    fill(col1, col2, col3);
+    rect(x, y, 25, 25);
+    if (col1 === 0 && col2 === 0 && col3 === 0) {
+        fill(255, 255, 255);
+    } else {
+        fill(0, 0, 0);
+    }
+    rect(x+5, y+10, 15, 5);
+    rect(x+10, y+5, 5, 15);
+};
+var Blurb = function(message) {
+    this.message = message;
+    this.x = 200-(message.length)*6;
+    this.y = 125;
+};
+Blurb.prototype.move = function() {
+    fill(255, 0, 0);
+    textSize(25);
+    if (this.y>50) {
+        text(this.message, this.x, this.y);
+        this.y -= 1;
+    }
+};
+var comingSoonBlurb = new Blurb ("Coming Soon!");
+
+var menuLink = false;
+// -- STORIES -- //
+var fire = [
+    {id:0,
+    senerio: "The school bell rings. As your\nteacher begins talking,\nyour friend, Jeff, signals to\nmeet him in the bathroom\nDo you...",
+    option:[
+        {text:"Ask the teacher to go to the\nbathroom",
+        goTo: 1},
+        {text: "Signal \"no\" back to him",
+        goTo:2}
+    ]},
+    {id:1,
+    senerio: "You raise your hand and\nyour teacher lets you go.\nA minute later, Jeff\nfolows you in. He says,\n\"I think I found a $20\nbill. It's stuck behind the fire\nextinguisure. Go distract the teacher\nso I can get it.\" Do you...",
+    option:[
+        {text:"Go to the classroom",
+        goTo: 3},
+        {text: "Ask to help him get the $20",
+        goTo: 4}
+    ]},
+    {id:2,
+    senerio: "When you signal \"no,\" he looks\nfrustrated. After a while, the fire\nalarm goes off and the school\nevacuates. No one was hurt.",
+    option:[]},
+    {id:3,
+    senerio: "You go to the classroom and start\ntalking to the teacher, when the\nfire alarm goes off. Oh no!, you\nthink, rmembering Jeff is still\ninside. Do you...",
+    option:[
+        {text:"Follow the class outside",
+        goTo: 5},
+        {text: "Run back to get your friend",
+        goTo: 6}
+    ]},
+    {id:4,
+    senerio: "When you ask him, Jeff agrees.\n\"Two is better than one!\" he says.\nTogether, you get the money out\nas the fire alarm goes off. \"Hurry!\nLets get out of here!\" You and Jeff\nsafely escape the school with the\n$20.",
+    option:[]},
+    {id:5,
+    senerio: "You follow the class outside, and\nfind out later that luckily a fireman\nfound Jeff and he was saved, but\nyour friend will always remember\nthe flames of the fire.",
+    option:[]},
+    {id:6,
+    senerio: "You run back and find Jeff staring\nat a wall of flames. \"Run!\" you\nscream, snapping him out of his\ntrance. Together, you both make it\nout of the burning school, but\nwithout the money.",
+    option:[]}
+];
+var cth = [ // always goes to id:5 after a while. Big problem, because not telling it to go to 5 :(
+    {id:0,
+    senerio: "You don't like school and decide to\nfake sick to skip it today. Do you...",
+    option:[
+        {text:"Play video games",
+        goTo: 1},
+        {text: "Run to a friend's house",
+        goTo:2}
+    ]},
+    {id:1,
+    senerio: "You play video games and don't\nget in trouble.",
+    option:[]},
+    {id:2,
+    senerio: "You knock on his door and your\nfriend's mom answers. \"Hey,\nshouldn't you be at school?\nWhy are you here?\" she says. Do\nyou say...",
+    option:[
+        {text:"I'm sick.",
+        goTo:3},
+        {text: "I'm faking sick.",
+        goTo:4},
+        {text: "I'm not here.",
+        goTo:5}
+    ]},
+    {id:3,
+    senerio: "\"Aww, that's too bad. You should\ngo home before you get me sick,\nor worse, get my dog sick!\" she\nsays. Do you...",
+    option:[
+        {text:"Say okay",
+        goTo:1},
+        {text: "Run inside anyway",
+        goTo:6}
+    ]},
+    {id:4,
+    senerio: "\"YOU'RE FAKING SICK?! I'm\ncalling your mom!\" she screams.\nDo you...",
+    option:[
+        {text:"Say okay and run home",
+        goTo:13},
+        {text: "Say okay and run to another\nfriend's house",
+        goTo:17},
+        {text: "Steal her phone",
+        goTo:11}
+    ]},
+    {id:5,
+    senerio: "\"What???\" she says, confused.\nDo you...",
+    option:[
+        {text:"Run home",
+        goTo:1},
+        {text: "Run to another friend's house",
+        goTo:17}
+    ]},
+    {id:6,
+    senerio: "You run inside the house.\nDo you go to...",
+    option:[
+        {text:"The basement",
+        goTo:7},
+        {text: "Your friend's video game console",
+        goTo:7}
+    ]},
+    {id:7,
+    senerio: "After a while, the mom finds you.\nFurious, she throws a toaster at you.\nDo you...",
+    option:[
+        {text:"Run away",
+        goTo:8},
+        {text: "Catch it",
+        goTo:9}
+    ]},
+    {id:8,
+    senerio: "You dodge the toaster and go hide\nin their washing machine. A while\nlater, the mom gives up looking for\nyou and starts the washing machine\nas she does laundry. Hiding in there\nwas probabaly not the best option.",
+    option:[]},
+    {id:9,
+    senerio: "You catch the toaster and say\n\"Ha ha!\" and then realize that the\ntoaster is on and is burning your\nhands.You get in trouble, and can't\nplay video games because of your\nburnt hands. :(",
+    option:[]},
+    {id:10,
+    senerio: "You get in trouble. Your mom\nmakes you go to school for the\nrest of the day, and you are\ngrounded from video games for\nan entire week!",
+    option:[]},
+    {id:11,
+    senerio: "You take her phone before she can\ncall. Do you...",
+    option:[
+        {text:"Play Minecraft",
+        goTo:12},
+        {text: "Play a virtual-reality game",
+        goTo:14}
+    ]},
+    {id:12,
+    senerio: "Your friend's mom takes her phone\nback before you can even open a\nworld. She sends you home and\ncalls your mom.",
+    option:[
+        {text:"Okay",
+        goTo:10}
+    ]},
+    {id:13,
+    senerio: "You get home and see your mom\nholding her phone with a mad\nexpression on her face.",
+    option:[
+        {text:"Okay",
+        goTo:10}
+    ]}
+];
+var app = function(name, x, y) {
+    fill(255, 255, 255);
+    rect(x, y, 95, 95);
+    fill(0, 0, 0);
+    textSize(20);
+    if (name === "fire") {
+        text("I'm on Fire!", x, y+120);
+        fill(255, 0, 0);
+        beginShape();
+        vertex(x+15, y+60);
+        vertex(x+30, y+80);
+        vertex(x+70, y+80);
+        vertex(x+80, y+60);
+        vertex(x+67, y+20);
+        vertex(x+55, y+60);
+        vertex(x+45, y+20);
+        vertex(x+35, y+60);
+        vertex(x+25, y+20);
+        vertex(x+15, y+60);
+        endShape();
+    } else if (name === "cth") {
+        fill(0, 0, 0);
+        textSize(20);
+        text("Capture the House", x-30, y+120);
+        fill(120, 80, 0);
+        rect(x+20, y+35, 50, 50);
+        fill(150, 150, 150);
+        triangle(x+45, y+15, x+20, y+35, x+70, y+35);
+    } else {
+        stroke(255, 0, 0);
+        strokeWeight(5);
+        line(x, y, x+95, y+95);
+        line(x, y+95, x+95, y);
+        strokeWeight(1);
+        stroke(0, 0, 0);
+    }
+}; // No longer supported! New function: appList
+var appList = function(array) {
+    for (var i=0;i < array.length;i++) {
+        if (i === 0 | i === 1) {
+            row = 1;
+        } else if (i === 2 | i === 3){
+            row = 2;
+        }
+        appBaseX = i*175+75-((row-1)*350);
+        appBaseY = row*150-50;
+        fill(255, 255, 255);
+        rect(appBaseX, appBaseY, 95, 95);
+        fill(0, 0, 0);
+        textSize(20);
+        if (array[i] === "fire") {
+            text("I'm on Fire!", appBaseX, appBaseY+115);
+            fill(255, 0, 0);
+            beginShape();
+            vertex(appBaseX+15, appBaseY+60);
+            vertex(appBaseX+30, appBaseY+80);
+            vertex(appBaseX+70, appBaseY+80);
+            vertex(appBaseX+80, appBaseY+60);
+            vertex(appBaseX+67, appBaseY+20);
+            vertex(appBaseX+55, appBaseY+60);
+            vertex(appBaseX+45, appBaseY+20);
+            vertex(appBaseX+35, appBaseY+60);
+            vertex(appBaseX+25, appBaseY+20);
+            vertex(appBaseX+15, appBaseY+60);
+            endShape();
+        } else if (array[i] === "cth") {
+            fill(0, 0, 0);
+            textSize(20);
+            text("Capture the House", appBaseX-30, appBaseY+120);
+            fill(120, 80, 0);
+            rect(appBaseX+20, appBaseY+35, 50, 50);
+            fill(150, 150, 150);
+            triangle(appBaseX+45, appBaseY+15, appBaseX+20, appBaseY+35, appBaseX+70, appBaseY+35);
+        } else {
+            stroke(255, 0, 0);
+            strokeWeight(5);
+            line(appBaseX, appBaseY, appBaseX+95, appBaseY+95);
+            line(appBaseX, appBaseY+95, appBaseX+95, appBaseY);
+            strokeWeight(1);
+            stroke(0, 0, 0);
+        }
+    }
+};
+var isMouseInside = function(btn) {
+    return (mouseX >= btn.x &&
+            mouseX <= (btn.x+btn.width) &&
+            mouseY >= btn.y && 
+            mouseY <= (btn.y+btn.height));
+};
+var displayPage = function(pageId, story, textCol1, textCol2, textCol3) {
+    textSize(24);
+    fill(textCol1, textCol2, textCol3);
+    if (story === "fire") {
+        if (terminal === true) {
+            println(fire[pageId].id+" = Current ID");
+        }
+        text(fire[pageId].senerio, 20, 50);
+        if (fire[pageId].option.length === 0) {
+            fill(0, 255, 255);
+            text("Click to return to menu.", 50, 360);
+            menuLink = true;
+        } else {
+            for (var i = 0; i<fire[pageId].option.length; i++) {
+                choiceY = 150+((4-fire[pageId].option.length)*50)+i*50;
+                btnz[i].y = choiceY;
+                btnz[i].goToId = fire[pageId].option[i].goTo;
+                // println(fire[pageId].option[i].goTo);
+                fill(0, 255, 0);
+                rect(10, choiceY, 380, 50);
+                fill(textCol1, textCol2, textCol3);
+                text(fire[pageId].option[i].text, 20, choiceY+20);
+            }
+        }
+    } else if (story === "cth") {
+        if (terminal === true) {
+            println(cth[pageId].id+" = Current ID");
+        }
+        text(cth[pageId].senerio, 20, 50);
+        if (cth[pageId].option.length === 0) {
+            fill(0, 255, 255);
+            text("Click to return to menu.", 50, 360);
+            menuLink = true;
+        } else {
+            for (var i = 0; i<cth[pageId].option.length; i++) {
+                choiceY = 150+((4-cth[pageId].option.length)*50)+i*50;
+                btnz[i].y = choiceY;
+                btnz[i].goToId = cth[pageId].option[i].goTo;
+                // println(cth[pageId].option[i].goTo);
+                fill(0, 255, 0);
+                rect(10, choiceY, 380, 50);
+                fill(textCol1, textCol2, textCol3);
+                text(cth[pageId].option[i].text, 20, choiceY+20);
+            }
+        }
+    } else {
+        println("Error 200: Invalid story name. Try using the name of the object of the story you want.");
+    }
+};
+
+var homeButton = function() {
+    fill(255, 0, 0);
+    rect(0, 350, 50, 50);
+    fill(0, 0, 0);
+    textSize(17);
+    text("HOME", 2, 380);
+};
+stroke(0, 0, 0);
+strokeWeight(1);
+var draw = function() {
+    if (whereUR === "load") {
+        ugLoader.randomX = random(0, width);
+        ugLoader.randomY = random(0, height);
+        background(0, 0, 0);
+        if (ugLoader.soundcue === false) {
+            playSound(getSound("retro/whistle1"));
+            ugLoader.soundcue = true;
+        }
+        textSize(50);
+        fill(0, 255, 0);
+        text("ULTIMATE", 80, 150);
+        fill(255, 127, 0);
+        rect(75, 150, 260, 10);
+        fill(0, 255, 0);
+        text("GAMES", 115, 225);
+        
+        fill(255, 255, 0);
+        textSize(15);
+        text("X", ugLoader.randomX, ugLoader.randomY);
+        
+        fill(0, 0, 255);
+        rect(0, 300, ugLoader.width, 20);
+        ugLoader.width += 5;
+        if (ugLoader.width >= 400) {
+            whereUR = "title";
+        }
+    } else if (whereUR === "title" || whereUR === "trans") {
+        fill(fade.red, 255, fade.blue);
+        rect(gndZeroX, 0, 400, 400);
+        if (fade.red < 255 && fade.blue > 0) {
+            fade.blue -= 3;
+            fade.red += 3;
+        }
+        textSize(75);
+        fill(255, 0, 255, title.oneFade);
+        text("Which", gndZeroX+ title.oneX, 85);
+        fill(255, 0, 255, title.twoFade);
+        text("Way?", gndZeroX+ title.twoX, 175);
+        fill(255, 0, 0);
+        rect(gndZeroX + 135, 230, 150, 75);
+        fill(0, 255, 0);
+        textSize(50);
+        text("PLAY", gndZeroX+150, 285);
+        fill(0, 0, 0);
+        rect(gndZeroX+0, 0, 50, 50);
+        textSize(25);
+        fill(243, 255, 156);
+        text("</>", gndZeroX+7, 30);
+        fill(0, 0, 255);
+        rect(gndZeroX+0, 50, 50, 50);
+        fill(255, 255, 0);
+        text("?", gndZeroX+18, 82);
+        fill(100, 100, 100); // (255,75,0)
+        rect(gndZeroX+0, 100, 50, 50);
+        fill(0, 0, 0);
+        text("+", gndZeroX+18, 132);
+        fill(255, 255, 255);
+        rect(gndZeroX+0, 150, 50, 50);
+        fill(0, 255, 0);
+        text("*", gndZeroX+20, 188);
+        if ((millis()-startMillis) > 1000) {
+            if (title.oneFade < 240) {
+                title.oneX += 0.5;
+                title.oneFade++;
+            }
+            if (title.oneFade > 130 && title.twoFade < 180) {
+                title.twoX -= 0.5;
+                title.twoFade++;
+            }
+        }
+        if (whereUR === "trans") {
+            gndZeroX -= 8;
+        }
+        fill(0, 255, 0);
+        rect(gndZeroX+400, 0, 400, 400);
+        if (gndZeroX <= -400) {
+            whereUR = "menu";
+        }
+    } else if (whereUR === "menu") {
+        background(0, 255, 0);
+        fill(0, 0, 255);
+        textSize(50);
+        text("Menu", 140, 50);
+        fill(255, 255, 0);
+        for (var i = 0; i<4; i++) {
+            rect(i*80+50, 65, 75, 25);
+        }
+        rect(50, 35, 75, 25);
+        rect(290, 35, 75, 25);
+        
+        fill(255, 150, 0);
+        if (tab === "new") {
+            rect(50, 65, 75, 25);
+            appList(orderOfApps.anew);
+        } else if (tab === "trend") {
+            rect(130, 65, 75, 25);
+            if (orderOfApps.trending.length === 0) {
+                fill(0, 0, 0);
+                textSize(22);
+                text("Nothing trending now...\nWhy don't you comment\nbelow on a story you like?", 50, 130);
+            } else {
+                appList(orderOfApps.trending);
+            }
+        } else if (tab === "top") {
+            rect(210, 65, 75, 25);
+            appList(orderOfApps.atop);
+        } else if (tab === "all") {
+            rect(290, 65, 75, 25);   
+            appList(orderOfApps.aall);
+        } else if (tab === "browse") {
+            rect(50, 35, 75, 25);
+            
+        } else if (tab === "starred") {
+            rect(290, 35, 75, 25);
+            if (orderOfApps.starred.length === 0) {
+                fill(0, 0, 0);
+            textSize(22);
+            text("To star a story, click the star in the\ntop left hand corner on the info\npage of the story.", 50, 130);
+            } else {
+                appList(orderOfApps.starred);
+            }
+        }
+        fill(0, 0, 0);
+        textSize(20);
+        text("New", 65, 85);
+        text("Trending", 130, 85);
+        text("Top", 230, 85);
+        text("All A-Z", 298, 85);
+        text("Browse", 55, 55);
+        text("Starred", 296, 55);
+        
+        doItOnce = false;
+        numQuestions = 0;
+        homeButton();
+        //add design + title + info box
+    } else if (whereUR === "whats-new") {
+        background(0, 255, 255);
+        fill(255, 0, 0);
+        textSize(35);
+        text("What's New:", 100, 50);
+        
+        textSize(25);
+        text("6/22/17", 25, 100);
+        fill(255, 247, 0);
+        text("Now you can star programs!", 25, 125);
+        fill(0, 0, 0);
+        text("Star your favorite choose-your-\nown-adventures in this new\nupdate!\n\nAlso, now you can press the `\nkey (under the escape key) to\nreturn to the main menu.", 25, 150);
+        
+        /*fill(0, 0, 0);
+        text("6/20/17", 25, 100);
+        fill(255, 0, 255);
+        text("SUPER SIMPLIFIED BUTTONS!", 25, 125);
+        fill(0, 0, 0);
+        text("The menu continues to develop\nwith better positioning and\nmore simplified code.\nThe terminal is also improved to\nbe more user-friendly for people\nwho want to help beta test and\nhelp fix bugs.", 25, 150);
+        fill(255, 140, 0);
+        text("MUCH", 323, 180);
+        fill(0, 175, 0);
+        text("Also, faster transitions!", 70, 360);*/
+        
+        /*fill(0, 0, 0);
+        text("10/25/16", 25, 100);
+        fill(0, 200, 0);
+        text("MAJOR GAME MAKEOVER!", 25, 125);
+        fill(0, 0, 0);
+        text("The whole game is being\nchanged --                            (in\ntitle screen),                    (in\ngame menu),\n\nand much more soon to come!", 25, 150);
+        fill(150, 150, 0);
+        text("NEW BUTTONS\n  NEW TABS\n    NEW USER-\nFRIENDLYNESS,", 150, 180);*/
+        
+        
+        homeButton();
+    } else if (whereUR === "create") {
+        noStroke();
+        fill(200, 200, 200);
+        rect(125, comingSoonBlurb.y-30, 175, 40);
+        stroke(0, 0, 0);
+        comingSoonBlurb.move();
+        if (comingSoonBlurb.y <= 50) {
+            comingSoonBlurb.y = 150;
+            whereUR = "title";
+        }
+    } else if (whereUR === "info/help") {
+        background(255, 200, 255);
+        fill(0, 175, 0);
+        textSize(35);
+        text("Info/Help", 125, 45);
+        fill(100, 100, 100);
+        stroke(0, 0, 0);
+        strokeWeight(2);
+        if (helpPage > 1) {
+            rect(0, 75, 20, 175);
+            line(5, 160, 15, 150);
+            line(5, 160, 15, 170);
+        }
+        if (helpPage < 3) {
+            rect(380, 75, 20, 175);
+            line(395, 160, 385, 150);
+            line(395, 160, 385, 170);
+        }
+        
+        strokeWeight(1);
+        if (helpPage === 1) {
+            fill(0, 0, 0);
+            textSize(22);
+            text("Welcome to Which Way! To open a\nstory, click a box in the menu screen.\nYou will then be in the info screen of\nthe story. Click to enter the story.\nFirst, read the senerio. Then, click\nthe box with what you choose to do\nnext. Once you have selected some", 25, 90);
+        } else if (helpPage === 2) {
+            fill(0, 0, 0);
+            textSize(22);
+            text("answers, you will find a screen at\nthe end of your story. Click the\nscreen and you will be returned to\nthe menu. If you like a story and\nwant to bookmark it, click the box in\nthe top left corner of the info screen\nto star it.", 25, 90);
+        } else if (helpPage === 3) {
+            fill(0, 0, 0);
+            textSize(22);
+            text("Press ` (under the escape key) at\nany time to return to the menu.\nComment on your favorite choose-\nyour-own-adventures in the \"Tips\n& Thanks\" section and we will make\nmore of them. Enjoy!", 25, 90);
+        }
+        fill(255, 100, 0);
+        text("**Special thanks to JASON MOCK for\nall his help in creating this program**", 20, 285);
+        fill(0, 0, 255);
+        text("Thank you for visiting this program!", 20, 345);
+        
+        homeButton();
+    } else if (whereUR === "fireIntro") {
+        background(255, 0, 0);
+        noFill();
+        rect(10, 10, 25, 25);
+        for (var i=0; i<orderOfApps.starred.length; i++) {
+            if (orderOfApps.starred[i] === "fire") {
+                image(star, 6, -7, 35, 50);
+            }
+        }
+        fill(255, 255, 255);
+        textSize(40);
+        text("I'm on Fire!", 100, 50);
+        textSize(30);
+        text("Created by "+stories[0].author, 25, 100);
+        plusBox(220, 75, 255, 255, 255);
+        fill(255, 255, 255);
+        text("Release date: "+stories[0].date, 25, 140);
+        text("Questions:", 25, 180);
+        if (doItOnce === false) {
+            for (var i = 0; i < fire.length; i++) {
+                if (fire[i].option.length > 0) {
+                    numQuestions++;
+                }
+            }
+            doItOnce = true;
+        }
+        text(numQuestions, 175, 180);
+        text("Ends: " + (fire.length-numQuestions), 25, 220);
+        textSize(25);
+        text("Author's Note: "+stories[0].note, 25, 250);
+        fill(0, 255, 255);
+        text("Click to continue.", 100, 380);
+        
+        currPageId = 0;
+    } else if (whereUR === "storyFire") {
+        background(255, 0, 0);
+        fill(255, 255, 255);
+        displayPage(currPageId, "fire", 255, 255, 255);
+    } else if (whereUR === "cthIntro") {
+        background(255, 255, 0);
+        noFill();
+        rect(10, 10, 25, 25);
+        for (var i=0; i<orderOfApps.starred.length; i++) {
+            if (orderOfApps.starred[i] === "cth") {
+                image(star, 6, -7, 35, 50);
+            }
+        }
+        fill(0, 0, 0);
+        textSize(40);
+        text("Capture the House", 40, 50);
+        textSize(30);
+        text("Created by "+stories[1].author, 25, 100);
+        plusBox(220, 75, 255, 255, 255);
+        plusBox(370, 105, 255, 255, 255);
+        fill(0, 0, 0);
+        text("Release date: "+stories[1].date, 25, 140);
+        text("Questions:", 25, 180);
+        if (doItOnce === false) {
+            for (var i = 0; i < cth.length; i++) {
+                if (cth[i].option.length > 0) {
+                    numQuestions++;
+                }
+            }
+            doItOnce = true;
+        }
+        text(numQuestions, 175, 180);
+        text("Ends: " + (cth.length-numQuestions), 25, 220);
+        textSize(25);
+        text("Author's Note: "+stories[1].note, 25, 250);
+        fill(0, 255, 255);
+        text("Click to continue.", 100, 380);
+        
+        currPageId = 0;
+    } else if (whereUR === "storycth") {
+        background(255, 255, 0);
+        fill(0, 0, 0);
+        displayPage(currPageId, "cth", 0, 0, 0);
+    }
+    if (terminal === true) {
+        println(btnz[0].goToId +"=First ID // Second ID="+btnz[1].goToId);
+    }
+    
+    if (whereUR === "title") {
+        fill(0, 255, 0);
+        textSize(15);
+        if (mouseX <= 50 && mouseY <= 50) {
+            rect(60, 10, 70, 25);
+            fill(0, 0, 0);
+            text("Terminal", 65, 27);
+        } else if (mouseY >= 50 && mouseX <= 50 && mouseY <= 100) {
+            rect(60, 60, 70, 25);
+            fill(0, 0, 0);
+            text("Info/Help", 65, 77);
+        } else if (mouseY >= 100 && mouseX <= 50 && mouseY <= 150) {
+            fill(100, 100, 100);
+            rect(60, 110, 70, 25);
+            fill(0, 0, 0);
+            text("Create", 65, 127);
+        } else if (mouseY >= 150 && mouseX <= 50 && mouseY <= 200) {
+            rect(60, 160, 90, 25);
+            fill(0, 0, 0);
+            text("What's New", 65, 177);
+        }
+    }
+    if (whereUR !== "trans") {
+        gndZeroX = 0;
+    }
+    
+    
+};
+
+var keyPressed = function() {
+    if (key.toString() === "`") {
+        if (whereUR === "title" || whereUR === "info/help" || whereUR === "create" || whereUR === "whats-new") {
+            whereUR = "title";
+        } else {
+            whereUR = "menu";
+        }
+    }
+    if (keyCode === 192) {
+        
+    }
+};
+
+var mousePressed = function() {
+    if (whereUR === "title") {
+        if (mouseX <= 50 && mouseY <= 50) {
+            terminal = !terminal;
+        } else if (mouseY >= 50 && mouseX <= 50 && mouseY <= 100) {
+            whereUR = "info/help";
+        } else if (mouseY >= 100 && mouseX <= 50 && mouseY <= 150) {
+            whereUR = "create";
+        } else if (mouseY >= 150 && mouseX <= 50 && mouseY <= 200) {
+            whereUR = "whats-new";
+        } else if (mouseX >= 135 && mouseY >= 230 && mouseX <= 285 && mouseY <= 305) {
+            whereUR = "trans";
+        }
+    } else if (whereUR === "info/help") {
+        if (mouseY >= 75 && mouseX <= 20 && mouseY <= 250 && helpPage > 1) {
+            helpPage--;
+        } else if (mouseX >= 380 && mouseY >= 75 && mouseX <= 400 && mouseY <= 250 && helpPage < 3) {
+            helpPage++;
+        } else if (mouseX <= 50 && mouseY >= 350) {
+            whereUR = "title";
+        }
+    } else if (whereUR === "whats-new" && mouseX <= 50 && mouseY >= 350) {
+        whereUR = "title";
+    } else if (whereUR === "menu") {
+        if (mouseX >= 50 && mouseY >= 65 && mouseX <= 125 && mouseY <= 90) {
+            tab = "new";
+        } else if (mouseX >= 130 && mouseY >= 65 && mouseX <= 205 && mouseY <= 90) {
+            tab = "trend";
+        } else if (mouseX >= 210 && mouseY >= 65 && mouseX <= 285 && mouseY <= 90) {
+            tab = "top";
+        } else if (mouseX >= 290 && mouseY >= 65 && mouseX <= 365 && mouseY <= 90) {
+            tab = "all";
+        } else if (mouseX >= 50 && mouseY >= 35 && mouseX <= 125 && mouseY <= 60) {
+            tab = "browse";
+        } else if (mouseX >= 290 && mouseY >= 35 && mouseX <= 365 && mouseY <= 60) {
+            tab = "starred";
+        } else if (mouseX <= 50 && mouseY >= 350) {
+            whereUR = "title";
+        }
+        if (tab === "new") {
+            for (var i=0; i<orderOfApps.anew.length; i++) {
+                if (i === 0 | i === 1) {
+                    row = 1;
+                } else if (i === 2 | i === 3){
+                    row = 2;
+                }
+                appBaseX = i*175+75-((row-1)*350);
+                appBaseY = row*150-50;
+                if (mouseX >= appBaseX && mouseY >= appBaseY && mouseX <= appBaseX+95 && mouseY <= appBaseY+95) {
+                    if (orderOfApps.anew[i] === "fire") {
+                        whereUR = "fireIntro";
+                    } else if (orderOfApps.anew[i] === "cth") {
+                        whereUR = "cthIntro";
+                    }
+                }
+            }
+        } else if (tab === "trending") {
+            for (var i=0; i<orderOfApps.trending.length; i++) {
+                if (i === 0 | i === 1) {
+                    row = 1;
+                } else if (i === 2 | i === 3){
+                    row = 2;
+                }
+                appBaseX = i*175+75-((row-1)*350);
+                appBaseY = row*150-50;
+                if (mouseX >= appBaseX && mouseY >= appBaseY && mouseX <= appBaseX+95 && mouseY <= appBaseY+95) {
+                    if (orderOfApps.trending[i] === "fire") {
+                        whereUR = "fireIntro";
+                    } else if (orderOfApps.trending[i] === "cth") {
+                        whereUR = "cthIntro";
+                    }
+                }
+            }
+        } else if (tab === "top") {
+            for (var i=0; i<orderOfApps.atop.length; i++) {
+                if (i === 0 | i === 1) {
+                    row = 1;
+                } else if (i === 2 | i === 3){
+                    row = 2;
+                }
+                appBaseX = i*175+75-((row-1)*350);
+                appBaseY = row*150-50;
+                if (mouseX >= appBaseX && mouseY >= appBaseY && mouseX <= appBaseX+95 && mouseY <= appBaseY+95) {
+                    if (orderOfApps.atop[i] === "fire") {
+                        whereUR = "fireIntro";
+                    } else if (orderOfApps.atop[i] === "cth") {
+                        whereUR = "cthIntro";
+                    }
+                }
+            }
+        } else if (tab === "all") {
+            for (var i=0; i<orderOfApps.aall.length; i++) {
+                if (i === 0 | i === 1) {
+                    row = 1;
+                } else if (i === 2 | i === 3){
+                    row = 2;
+                }
+                appBaseX = i*175+75-((row-1)*350);
+                appBaseY = row*150-50;
+                if (mouseX >= appBaseX && mouseY >= appBaseY && mouseX <= appBaseX+95 && mouseY <= appBaseY+95) {
+                    if (orderOfApps.aall[i] === "fire") {
+                        whereUR = "fireIntro";
+                    } else if (orderOfApps.aall[i] === "cth") {
+                        whereUR = "cthIntro";
+                    }
+                }
+            }
+        } else if (tab === "starred") {
+            for (var i=0; i<orderOfApps.starred.length; i++) {
+                if (i === 0 | i === 1) {
+                    row = 1;
+                } else if (i === 2 | i === 3){
+                    row = 2;
+                }
+                appBaseX = i*175+75-((row-1)*350);
+                appBaseY = row*150-50;
+                if (mouseX >= appBaseX && mouseY >= appBaseY && mouseX <= appBaseX+95 && mouseY <= appBaseY+95) {
+                    if (orderOfApps.starred[i] === "fire") {
+                        whereUR = "fireIntro";
+                    } else if (orderOfApps.starred[i] === "cth") {
+                        whereUR = "cthIntro";
+                    }
+                }
+            }
+        }
+    } else if (whereUR === "fireIntro") {
+        if (mouseX >= 220 && mouseY >= 75 && mouseX <= 245 && mouseY <= 100) {
+            println("https://www.khanacademy.org/profile/e17m/");
+        } else if (mouseX >= 10 && mouseY >= 10 && mouseX <= 35 && mouseY <= 35) {
+            for (var i=0; i<=orderOfApps.starred.length; i++) {
+                if (orderOfApps.starred[i] === "fire") {
+                    orderOfApps.starred.splice(i, 1);
+                } else if (i === orderOfApps.starred.length) {
+                    orderOfApps.starred.push("fire");
+                    break;//or i++;
+                }
+            }
+        } else {
+            whereUR = "storyFire";
+        }
+    } else if (whereUR === "cthIntro") {
+        if (mouseX >= 220 && mouseY >= 75 && mouseX <= 245 && mouseY <= 100) {
+            println("https://www.khanacademy.org/profile/e17m/");
+        } else if (mouseX >= 370 && mouseY >= 105 && mouseX <= 395 && mouseY <= 130) {
+            println("https://www.khanacademy.org/profile/isaiah.mock/");
+        } else if (mouseX >= 10 && mouseY >= 10 && mouseX <= 35 && mouseY <= 35) {
+            for (var i=0; i<=orderOfApps.starred.length; i++) {
+                if (orderOfApps.starred[i] === "cth") {
+                    orderOfApps.starred.splice(i, 1);
+                } else if (i === orderOfApps.starred.length) {
+                    orderOfApps.starred.push("cth");
+                    break;//or i++;
+                }
+            }
+        } else {
+            whereUR = "storycth";
+        }
+    } else if (whereUR === "storyFire") {
+        for (var i = 0; i < fire[currPageId].option.length; i++) {
+            if (isMouseInside(btnz[i]) === true) {
+                currPageId = btnz[i].goToId;
+            }
+        }
+    } else if (whereUR === "storycth") {
+        for (var i = 0; i < cth[currPageId].option.length; i++) {
+            if (isMouseInside(btnz[i]) === true) {
+                currPageId = btnz[i].goToId;
+            }
+        }
+    }
+    if (menuLink === true) {
+        whereUR = "menu";
+        menuLink = false;
+    }
+};
